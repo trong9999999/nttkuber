@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: web-ns
+spec:
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: your-image-name  # Thay thế bằng tên hình ảnh của bạn
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: html-file
+          mountPath: /var/www/html
+        resources:
+          limits:
+            cpu: "0.5"
+            memory: "512Mi"
+      volumes:
+      - name: html-file
+        hostPath:
+          path: .
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+  namespace: web-ns
+spec:
+  selector:
+    app: web
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080

@@ -1,0 +1,148 @@
+# mysql-deployment.yaml
+
+
+
+#Truoc khi chay hay chay kubectl create ns web-ns
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-db
+  namespace: web-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-db
+  template:
+    metadata:
+      labels:
+        app: mysql-db
+    spec:
+      containers:
+        - name: mysql-container
+          image: mysql
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: root
+            - name: MYSQL_DATABASE
+              value: pet
+          ports:
+            - containerPort: 3306
+          #volumeMounts:
+          #   - mountPath: var/lib/mysql
+          #     name: mysql-data
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      #volumes:
+      #- name: mysql-data
+      #  hostPath:
+      #   path: ./pet.sql
+
+
+---
+# mysql-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+  namespace: web-ns
+spec:
+  selector:
+    app: mysql-db
+  ports:
+    - port: 3306
+      targetPort: 3306
+  type: ClusterIP
+
+---
+# phpmyadmin-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phpmyadmin
+  namespace: web-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phpmyadmin
+  template:
+    metadata:
+      labels:
+        app: phpmyadmin
+    spec:
+      containers:
+        - name: phpmyadmin
+          image: phpmyadmin/phpmyadmin:5.2
+          env:
+            - name: PMA_HOST
+              value: mysql-service.web-ns.svc.cluster.local
+            - name: PMA_PORT
+              value: "3306"
+            - name: MYSQL_ROOT_PASSWORD
+              value: root
+          ports:
+            - containerPort: 8081
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+
+---
+# phpmyadmin-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phpmyadmin-svc
+  namespace: web-ns
+spec:
+  selector:
+    app: phpmyadmin
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
+
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web   #Day la deployment cua web
+  namespace: web-ns
+spec:
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: thanhlam2k4/web-app-image #Name file of image
+        ports:
+        - containerPort: 8080
+        resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+        
+
+--- 
+apiVersion: v1
+kind: Service 
+metadata:
+  name: web-service   #Day la service cua web (service de external ra ben ngoai cluster)
+  namespace: web-ns
+spec:
+  selector:
+    name: web
+  ports:
+  - protocol: TCP
+    port: 80  
+    targetPort: 8080
